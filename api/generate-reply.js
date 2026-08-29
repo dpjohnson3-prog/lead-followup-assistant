@@ -6,6 +6,8 @@ const TONE_DESCRIPTIONS = {
   'direct-brief': 'direct and brief',
 };
 
+const MODEL = 'claude-sonnet-4-6';
+
 /**
  * Maps an error from the Anthropic SDK to an HTTP status plus a plain-English
  * message safe to show a non-technical user. `code` is machine-readable so the
@@ -14,14 +16,25 @@ const TONE_DESCRIPTIONS = {
  * Order matters: in the TypeScript/JS SDK, APIConnectionTimeoutError extends
  * APIConnectionError, which in turn extends APIError — so the most specific
  * classes have to be checked first.
+ *
+ * Each branch matches on `instanceof` OR the HTTP status, so an error that
+ * arrives from a second copy of the SDK (bundler duplication defeats
+ * `instanceof`) still classifies by status instead of silently falling through
+ * to the catch-all.
  */
 function describeError(err) {
+  const status = typeof err?.status === 'number' ? err.status : null;
+  // SDK errors stringify their whole JSON body into `.message`; the parsed
+  // body on `.error` carries the readable sentence, so prefer that.
+  const message = err?.error?.error?.message || err?.message || '';
+  const isStatus = (Cls, code) => (Cls && err instanceof Cls) || status === code;
+
   // Billing shows up as either a 400 invalid_request_error mentioning credit,
   // or a 403 whose error type is billing_error — check both before the
   // generic status-class branches below.
   const isBillingType = err?.type === 'billing_error';
-  const mentionsCredit = /credit balance|billing|purchase|too low/i.test(err?.message || '');
-  if (isBillingType || (err instanceof Anthropic.BadRequestError && mentionsCredit)) {
+  const mentionsCredit = /credit balance|billing|purchase|too low/i.test(message);
+  if (isBillingType || (isStatus(Anthropic.BadRequestError, 400) && mentionsCredit)) {
     return {
       status: 402,
       code: 'billing',
@@ -30,7 +43,7 @@ function describeError(err) {
     };
   }
 
-  if (err instanceof Anthropic.AuthenticationError) {
+  if (isStatus(Anthropic.AuthenticationError, 401)) {
     return {
       status: 500,
       code: 'invalid_api_key',
@@ -39,7 +52,7 @@ function describeError(err) {
     };
   }
 
-  if (err instanceof Anthropic.PermissionDeniedError) {
+  if (isStatus(Anthropic.PermissionDeniedError, 403)) {
     return {
       status: 500,
       code: 'permission_denied',
@@ -48,7 +61,17 @@ function describeError(err) {
     };
   }
 
-  if (err instanceof Anthropic.RateLimitError) {
+  // A 404 from this endpoint means the model ID doesn't exist or the key can't
+  // see it — not a missing URL. Name the model so the fix is obvious.
+  if (isStatus(Anthropic.NotFoundError, 404)) {
+    return {
+      status: 500,
+      code: 'unknown_model',
+      error: `Anthropic doesn't recognize the model "${MODEL}". Check the model ID in api/generate-reply.js.`,
+    };
+  }
+
+  if (isStatus(Anthropic.RateLimitError, 429)) {
     return {
       status: 429,
       code: 'rate_limit',
@@ -64,7 +87,8 @@ function describeError(err) {
     };
   }
 
-  // Covers DNS failures, refused connections, and dropped sockets.
+  // Covers DNS failures, refused connections, and dropped sockets. These carry
+  // no HTTP status, so there is no status fallback to pair with.
   if (err instanceof Anthropic.APIConnectionError) {
     return {
       status: 503,
@@ -73,7 +97,7 @@ function describeError(err) {
     };
   }
 
-  if (err instanceof Anthropic.InternalServerError) {
+  if (isStatus(Anthropic.InternalServerError, 500) || (status !== null && status >= 500)) {
     return {
       status: 503,
       code: 'upstream_unavailable',
@@ -81,26 +105,37 @@ function describeError(err) {
     };
   }
 
-  if (err instanceof Anthropic.BadRequestError) {
+  // Surface Anthropic's own message here: a 400 is a bug in the request we
+  // built (bad parameter, malformed messages), and the API says exactly what
+  // is wrong. Guessing "shorten the thread" hid that.
+  if (isStatus(Anthropic.BadRequestError, 400)) {
     return {
       status: 400,
       code: 'bad_request',
-      error: 'That conversation could not be sent to Anthropic. Try shortening the thread.',
+      error: `Anthropic rejected the request: ${message || 'no detail provided'}`,
     };
   }
 
-  if (err instanceof Anthropic.APIError) {
+  if (err instanceof Anthropic.APIError || status !== null) {
     return {
       status: 502,
       code: 'api_error',
-      error: 'Anthropic returned an unexpected error. Try again.',
+      error: `Anthropic returned an unexpected error${status ? ` (${status})` : ''}: ${
+        message || 'no detail provided'
+      }`,
     };
   }
 
+  // Nothing above matched, so this is not an API response at all — most often
+  // a bug in this function or a client that failed to construct. Report what
+  // was actually thrown; a bare "something went wrong" makes this undebuggable
+  // without server logs.
   return {
     status: 500,
     code: 'unknown',
-    error: 'Something went wrong generating the reply. Try again.',
+    error: `Reply generation failed: ${err?.name || 'Error'}${
+      message ? ` — ${message}` : ' (no message)'
+    }`,
   };
 }
 
@@ -144,7 +179,7 @@ Write ONLY the message body - no preamble, no quotation marks, no signature or s
   try {
     const client = new Anthropic();
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: MODEL,
       max_tokens: 1000,
       system: systemPrompt,
       messages: [
