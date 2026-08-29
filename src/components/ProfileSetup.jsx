@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { TONE_OPTIONS } from '../lib/leads';
+import { APP_NAME } from '../lib/branding';
 
 export default function ProfileSetup({ initialProfile, onSave, onCancel, onLoadDemo }) {
   const [businessName, setBusinessName] = useState(initialProfile?.businessName || '');
@@ -27,6 +28,7 @@ export default function ProfileSetup({ initialProfile, onSave, onCancel, onLoadD
   return (
     <div className="profile-setup">
       <form className="profile-setup__form" onSubmit={handleSubmit}>
+        <p className="wordmark">{APP_NAME}</p>
         <h1>{initialProfile ? 'Edit business profile' : 'Set up your business'}</h1>
         <p className="profile-setup__intro">
           This helps generate follow-up replies that sound like you.

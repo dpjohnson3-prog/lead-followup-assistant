@@ -1,6 +1,8 @@
-# Lead Follow-Up Assistant
+# Frontdesk
 
 A client-side React + Vite app for managing lead follow-ups: business profile setup, a lead inbox, AI-generated replies, and follow-up reminders. Lead and profile data persists locally in the browser via `localStorage`. Reply drafting is powered by a small serverless function that calls the Anthropic API server-side.
+
+> Frontdesk is the product name. The repository, deployment, and URLs still use the original `lead-followup-assistant` slug.
 
 ## Stack
 
@@ -34,10 +36,12 @@ The setup screen has a **Try it with sample data** button that loads a demo busi
 
 ```
 src/
-  components/       ProfileSetup, Sidebar, LeadThread, NewLeadModal
-  hooks/            useLocalStorage
+  components/        ProfileSetup, Sidebar, LeadThread, NewLeadModal
+  hooks/             useLocalStorage
   lib/               leads.js — shared data helpers/constants
-  App.jsx           top-level state + routing between profile setup and dashboard
+                     demoData.js — sample profile and leads
+                     branding.js — product name
+  App.jsx            top-level state + routing between profile setup and dashboard
 api/
   generate-reply.js  serverless endpoint that drafts replies via Claude
 ```

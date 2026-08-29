@@ -1,3 +1,14 @@
+/* Product wordmark — deliberately quiet so it never competes with the
+   business's own name, which is the important label on this screen. */
+.wordmark {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
 /* Layout */
 .dashboard {
   display: flex;
@@ -18,6 +29,10 @@
 
 .sidebar__header {
   padding: 20px 20px 12px;
+}
+
+.sidebar__header .wordmark {
+  margin-bottom: 10px;
 }
 
 .sidebar__header h2 {
@@ -349,11 +364,16 @@
 /* Forms (profile setup + new lead modal) */
 .profile-setup {
   display: flex;
-  align-items: center;
   justify-content: center;
   min-height: 100svh;
   padding: 20px;
   box-sizing: border-box;
+  /* Centred, but never clipped: a plain `center` puts the overflow of a
+     too-tall form above the top edge, where it can't be scrolled to. The
+     `safe` keyword falls back to flex-start once the form outgrows the
+     viewport; browsers without it keep the top-aligned declaration. */
+  align-items: flex-start;
+  align-items: safe center;
 }
 
 .profile-setup__form {
@@ -363,6 +383,12 @@
   flex-direction: column;
   gap: 14px;
   text-align: left;
+}
+
+/* Pull the heading up against the wordmark so they read as one unit,
+   rather than as two items in the form's 14px flex gap. */
+.profile-setup__form .wordmark {
+  margin-bottom: -10px;
 }
 
 .profile-setup__form h1 {

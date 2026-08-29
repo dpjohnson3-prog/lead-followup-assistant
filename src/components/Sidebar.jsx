@@ -1,4 +1,5 @@
 import { isFollowUpOverdue } from '../lib/leads';
+import { APP_NAME } from '../lib/branding';
 
 export default function Sidebar({
   profile,
@@ -14,6 +15,7 @@ export default function Sidebar({
   return (
     <aside className="sidebar">
       <div className="sidebar__header">
+        <p className="wordmark">{APP_NAME}</p>
         <h2>{profile.businessName}</h2>
         <p className="sidebar__trade">{profile.trade}</p>
       </div>
