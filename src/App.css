@@ -114,15 +114,33 @@
   white-space: nowrap;
 }
 
-.sidebar__edit-profile {
-  padding: 14px 20px;
-  border: none;
+.sidebar__footer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 20px;
   border-top: 1px solid var(--border);
+}
+
+.sidebar__footer-link {
+  padding: 2px 0;
+  border: none;
   background: none;
+  font: inherit;
   font-size: 14px;
   color: var(--accent);
   text-align: left;
   cursor: pointer;
+}
+
+.sidebar__footer-link--muted {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.sidebar__footer-link:hover {
+  text-decoration: underline;
 }
 
 /* Lead thread panel */
@@ -364,6 +382,22 @@
   gap: 8px;
 }
 
+.profile-setup__demo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+
+.profile-setup__demo-note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
 .profile-setup label,
 .modal label {
   display: flex;
@@ -383,6 +417,25 @@
   margin: 0;
   color: #e0454f;
   font-size: 13px;
+}
+
+/* Inline failure notice under the "Generate reply" button. Subtle on purpose —
+   it reports a recoverable problem, so it shouldn't read like an alarm. */
+.generate-error {
+  margin: 0 0 10px;
+  padding: 8px 12px;
+  border: 1px solid rgba(224, 69, 79, 0.3);
+  border-radius: 6px;
+  background: rgba(224, 69, 79, 0.08);
+  color: #c22b35;
+  font-size: 13px;
+  line-height: 140%;
+}
+
+@media (prefers-color-scheme: dark) {
+  .generate-error {
+    color: #ff9ba1;
+  }
 }
 
 .profile-setup input,

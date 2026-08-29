@@ -7,6 +7,7 @@ export default function Sidebar({
   onSelectLead,
   onNewLead,
   onEditProfile,
+  onResetDemo,
 }) {
   const dueCount = leads.filter(isFollowUpOverdue).length;
 
@@ -56,9 +57,18 @@ export default function Sidebar({
         })}
       </ul>
 
-      <button type="button" className="sidebar__edit-profile" onClick={onEditProfile}>
-        Edit business profile
-      </button>
+      <div className="sidebar__footer">
+        <button type="button" className="sidebar__footer-link" onClick={onEditProfile}>
+          Edit business profile
+        </button>
+        <button
+          type="button"
+          className="sidebar__footer-link sidebar__footer-link--muted"
+          onClick={onResetDemo}
+        >
+          Reset demo data
+        </button>
+      </div>
     </aside>
   );
 }

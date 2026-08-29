@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { TONE_OPTIONS } from '../lib/leads';
 
-export default function ProfileSetup({ initialProfile, onSave, onCancel }) {
+export default function ProfileSetup({ initialProfile, onSave, onCancel, onLoadDemo }) {
   const [businessName, setBusinessName] = useState(initialProfile?.businessName || '');
   const [trade, setTrade] = useState(initialProfile?.trade || '');
   const [serviceArea, setServiceArea] = useState(initialProfile?.serviceArea || '');
@@ -92,6 +92,17 @@ export default function ProfileSetup({ initialProfile, onSave, onCancel }) {
             Save
           </button>
         </div>
+
+        {onLoadDemo && (
+          <div className="profile-setup__demo">
+            <button type="button" className="btn btn--ghost" onClick={onLoadDemo}>
+              Try it with sample data
+            </button>
+            <p className="profile-setup__demo-note">
+              Loads a demo business and three example leads so you can look around first.
+            </p>
+          </div>
+        )}
       </form>
     </div>
   );

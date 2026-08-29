@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar';
 import LeadThread from './components/LeadThread';
 import NewLeadModal from './components/NewLeadModal';
 import { nextTicketNumber } from './lib/leads';
+import { DEMO_PROFILE, createDemoLeads } from './lib/demoData';
 import './App.css';
 
 function App() {
@@ -13,6 +14,26 @@ function App() {
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [isNewLeadOpen, setNewLeadOpen] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+
+  function handleLoadDemo() {
+    const demoLeads = createDemoLeads();
+    setProfile(DEMO_PROFILE);
+    setLeads(demoLeads);
+    setSelectedLeadId(demoLeads[0].id);
+    setIsEditingProfile(false);
+  }
+
+  function handleResetDemo() {
+    const confirmed = window.confirm(
+      'Reset will delete the business profile and all leads on this device. Continue?',
+    );
+    if (!confirmed) return;
+    setProfile(null);
+    setLeads([]);
+    setSelectedLeadId(null);
+    setNewLeadOpen(false);
+    setIsEditingProfile(false);
+  }
 
   if (!profile || isEditingProfile) {
     return (
@@ -23,6 +44,7 @@ function App() {
           setIsEditingProfile(false);
         }}
         onCancel={profile ? () => setIsEditingProfile(false) : undefined}
+        onLoadDemo={profile ? undefined : handleLoadDemo}
       />
     );
   }
@@ -61,8 +83,10 @@ function App() {
         onSelectLead={setSelectedLeadId}
         onNewLead={() => setNewLeadOpen(true)}
         onEditProfile={() => setIsEditingProfile(true)}
+        onResetDemo={handleResetDemo}
       />
       <LeadThread
+        key={selectedLead?.id}
         profile={profile}
         lead={selectedLead}
         onUpdateLead={(updater) => selectedLead && updateLead(selectedLead.id, updater)}

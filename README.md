@@ -16,6 +16,10 @@ cp .env.example .env   # then fill in ANTHROPIC_API_KEY
 npm run dev
 ```
 
+### Demo mode
+
+The setup screen has a **Try it with sample data** button that loads a demo business (Suncoast Pressure Washing) and three example leads — including one with an overdue follow-up — so you can see the app working without typing anything. **Reset demo data**, at the bottom of the sidebar, clears the profile and all leads and returns to the setup screen so the demo can be re-run cleanly.
+
 `npm run dev` runs the Vite dev server for the frontend only. The `/api/generate-reply` route needs the Vercel dev runtime to work locally — install the Vercel CLI (`npm i -g vercel`) and run `vercel dev` instead, or deploy to Vercel where the `/api` folder is picked up automatically.
 
 ## Environment variables

@@ -40,15 +40,37 @@ export default function LeadThread({ profile, lead, onUpdateLead }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ profile, thread: lead.messages }),
       });
+
+      // A non-JSON body means something other than the API answered — most
+      // often the reply endpoint isn't running (plain `vite dev` serves no
+      // /api routes) or a proxy returned an HTML error page.
+      const data = await res.json().catch(() => null);
+
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to generate reply');
+        throw new Error(
+          data?.error ||
+            `The reply service returned an error (${res.status}). Make sure the /api route is running.`,
+        );
       }
-      const data = await res.json();
+
+      if (!data?.reply) {
+        throw new Error(
+          "The reply service didn't return a draft. Make sure the /api route is running.",
+        );
+      }
+
       onUpdateLead((prev) => ({ ...prev, draftReply: data.reply }));
     } catch (err) {
-      setGenError(err.message || 'Something went wrong');
+      // A failed fetch (offline, server down) throws a TypeError with an
+      // unhelpful message, so give it a readable one.
+      const isNetworkFailure = err instanceof TypeError;
+      setGenError(
+        isNetworkFailure
+          ? "Couldn't reach the reply service. Check your connection and try again."
+          : err.message || 'Something went wrong. Try again.',
+      );
     } finally {
+      // Always runs, so the button never stays stuck on "Generating…".
       setIsGenerating(false);
     }
   }
@@ -140,7 +162,11 @@ export default function LeadThread({ profile, lead, onUpdateLead }) {
           </div>
         </div>
 
-        {genError && <p className="form-error">{genError}</p>}
+        {genError && (
+          <p className="generate-error" role="status">
+            {genError}
+          </p>
+        )}
 
         <textarea
           className="lead-thread__draft-textarea"
