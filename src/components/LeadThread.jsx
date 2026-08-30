@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { statusLabel, FOLLOW_UP_OPTIONS } from '../lib/leads';
 
-export default function LeadThread({ profile, lead, onUpdateLead }) {
+export default function LeadThread({ profile, lead, onUpdateLead, onBack }) {
   const [replyText, setReplyText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [genError, setGenError] = useState('');
@@ -105,7 +105,11 @@ export default function LeadThread({ profile, lead, onUpdateLead }) {
   return (
     <section className="lead-thread">
       <header className="lead-thread__header">
-        <div>
+        <div className="lead-thread__heading">
+          {/* Hidden above 768px, where the lead list is always on screen. */}
+          <button type="button" className="lead-thread__back" onClick={onBack}>
+            <span aria-hidden="true">←</span> Leads
+          </button>
           <h2>{lead.customerName || 'Unnamed lead'}</h2>
           <p className="lead-thread__meta">
             Ticket #{lead.ticketNumber} · {lead.source}

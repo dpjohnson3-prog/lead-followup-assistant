@@ -8,6 +8,10 @@ import { nextTicketNumber } from './lib/leads';
 import { DEMO_PROFILE, createDemoLeads } from './lib/demoData';
 import './App.css';
 
+// Keep in sync with the `max-width: 767px` breakpoint in App.css.
+const DESKTOP_QUERY = '(min-width: 768px)';
+const isDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
+
 function App() {
   const [profile, setProfile] = useLocalStorage('lfa.profile', null);
   const [leads, setLeads] = useLocalStorage('lfa.leads', []);
@@ -19,7 +23,10 @@ function App() {
     const demoLeads = createDemoLeads();
     setProfile(DEMO_PROFILE);
     setLeads(demoLeads);
-    setSelectedLeadId(demoLeads[0].id);
+    // Desktop shows both panes, so opening the first lead makes the demo look
+    // populated straight away. On mobile that would bury the lead list behind
+    // a thread view, so start on the list instead.
+    setSelectedLeadId(isDesktop() ? demoLeads[0].id : null);
     setIsEditingProfile(false);
   }
 
@@ -75,7 +82,10 @@ function App() {
   }
 
   return (
-    <div className="dashboard">
+    // data-view drives the mobile single-pane switch: under 768px the CSS
+    // shows only the list or only the thread. Desktop ignores it and keeps
+    // both panes side by side.
+    <div className="dashboard" data-view={selectedLead ? 'thread' : 'list'}>
       <Sidebar
         profile={profile}
         leads={leads}
@@ -90,6 +100,7 @@ function App() {
         profile={profile}
         lead={selectedLead}
         onUpdateLead={(updater) => selectedLead && updateLead(selectedLead.id, updater)}
+        onBack={() => setSelectedLeadId(null)}
       />
       {isNewLeadOpen && (
         <NewLeadModal onCreate={handleCreateLead} onClose={() => setNewLeadOpen(false)} />

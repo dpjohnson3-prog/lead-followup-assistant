@@ -187,6 +187,12 @@
   font-size: 20px;
 }
 
+/* Only meaningful in the mobile single-pane layout; on desktop the lead list
+   is always visible, so there is nothing to go back to. */
+.lead-thread__back {
+  display: none;
+}
+
 .lead-thread__meta {
   margin: 4px 0 0;
   font-size: 13px;
@@ -516,4 +522,226 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* ==========================================================================
+   Mobile / small tablet (< 768px)
+
+   Desktop above this breakpoint is untouched. Two structural changes here:
+
+   1. Single pane. `.dashboard[data-view]` decides whether the list or the
+      thread is on screen; the back button in the thread header returns to
+      the list.
+   2. The page scrolls as a document instead of as fixed-height panes with
+      inner scroll. This is what keeps the draft textarea reachable when the
+      on-screen keyboard opens: with a locked 100svh column the composer sits
+      under the keyboard and cannot be scrolled to, whereas a normally
+      scrolling document lets the browser bring the focused field into view.
+   ========================================================================== */
+@media (max-width: 767px) {
+  /* Release the full-height lock so the document can scroll. */
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100%;
+  }
+
+  #root {
+    min-height: 100dvh;
+  }
+
+  .dashboard {
+    flex-direction: column;
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  /* --- Single-pane switching --- */
+  .dashboard[data-view='thread'] .sidebar {
+    display: none;
+  }
+
+  .dashboard[data-view='list'] .lead-thread {
+    display: none;
+  }
+
+  /* --- Lead list --- */
+  .sidebar {
+    width: 100%;
+    border-right: none;
+    overflow: visible;
+  }
+
+  .sidebar__list {
+    overflow-y: visible;
+  }
+
+  .sidebar__lead {
+    min-height: 44px;
+    padding: 14px 20px;
+  }
+
+  .sidebar__lead-preview,
+  .sidebar__banner,
+  .sidebar__footer-link--muted {
+    font-size: 14px;
+  }
+
+  .sidebar__footer {
+    gap: 4px;
+  }
+
+  .sidebar__footer-link {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+  }
+
+  /* Push the footer links to the bottom when the list is short, so they are
+     not floating directly under a one-item list. */
+  .sidebar__list {
+    flex: 1 0 auto;
+  }
+
+  /* --- Thread view --- */
+  .lead-thread {
+    overflow: visible;
+    min-height: 100dvh;
+  }
+
+  .lead-thread__header {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    flex-wrap: wrap;
+    background: var(--bg);
+  }
+
+  .lead-thread__heading {
+    min-width: 0;
+  }
+
+  .lead-thread__back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    margin: -10px 0 2px -8px;
+    padding: 0 8px;
+    border: none;
+    background: none;
+    font: inherit;
+    font-size: 16px;
+    color: var(--accent);
+    cursor: pointer;
+  }
+
+  .lead-thread__meta,
+  .status-pill,
+  .generate-error,
+  .form-error {
+    font-size: 14px;
+  }
+
+  .lead-thread__messages {
+    overflow-y: visible;
+    padding: 16px;
+  }
+
+  /* Bubbles take most of the width; the small inset still distinguishes
+     customer from business at a glance. */
+  .message {
+    max-width: 88%;
+    font-size: 15px;
+  }
+
+  /* --- Composer: stack so every control is full width and tappable --- */
+  .lead-thread__log-reply {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .lead-thread__draft-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .lead-thread__follow-up,
+  .lead-thread__follow-up .btn {
+    width: 100%;
+  }
+
+  /* The menu opens upward from a full-width trigger, so match its width. */
+  .follow-up-menu {
+    right: 0;
+    min-width: 0;
+  }
+
+  .follow-up-menu button {
+    min-height: 44px;
+  }
+
+  .lead-thread__draft-footer .btn {
+    flex: 1;
+  }
+
+  .lead-thread__draft-textarea {
+    font-size: 16px;
+  }
+
+  /* --- Setup screen --- */
+  .profile-setup {
+    align-items: flex-start;
+    padding: 24px 16px 40px;
+  }
+
+  .profile-setup__form h1 {
+    font-size: 28px;
+  }
+
+  .profile-setup__demo .btn {
+    width: 100%;
+  }
+
+  .profile-setup__demo-note,
+  .wordmark {
+    font-size: 14px;
+  }
+
+  /* --- Modal --- */
+  .modal-overlay {
+    padding: 16px;
+    box-sizing: border-box;
+  }
+
+  .modal {
+    max-height: 90dvh;
+    overflow-y: auto;
+    padding: 20px;
+  }
+
+  /* --- Shared touch-target and no-zoom rules ---
+     16px on form controls is deliberate: iOS Safari zooms the page when a
+     focused field is smaller than that. */
+  .btn,
+  .sidebar__new-lead {
+    min-height: 44px;
+  }
+
+  .profile-setup input,
+  .profile-setup select,
+  .profile-setup textarea,
+  .lead-thread__log-reply input,
+  .modal input,
+  .modal select,
+  .modal textarea {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .profile-setup textarea,
+  .modal textarea {
+    min-height: 88px;
+  }
 }
