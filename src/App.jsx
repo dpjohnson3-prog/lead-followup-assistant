@@ -4,7 +4,7 @@ import ProfileSetup from './components/ProfileSetup';
 import Sidebar from './components/Sidebar';
 import LeadThread from './components/LeadThread';
 import NewLeadModal from './components/NewLeadModal';
-import { nextTicketNumber } from './lib/leads';
+import { DEFAULT_CADENCE, STAGE, migrateLeads, nextTicketNumber } from './lib/leads';
 import { DEMO_PROFILE, createDemoLeads } from './lib/demoData';
 import './App.css';
 
@@ -14,7 +14,8 @@ const isDesktop = () => window.matchMedia(DESKTOP_QUERY).matches;
 
 function App() {
   const [profile, setProfile] = useLocalStorage('lfa.profile', null);
-  const [leads, setLeads] = useLocalStorage('lfa.leads', []);
+  // migrateLeads upgrades anything saved under the old single-status model.
+  const [leads, setLeads] = useLocalStorage('lfa.leads', [], migrateLeads);
   const [selectedLeadId, setSelectedLeadId] = useState(null);
   const [isNewLeadOpen, setNewLeadOpen] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -68,11 +69,16 @@ function App() {
       ticketNumber: nextTicketNumber(leads),
       customerName: customerName.trim(),
       source,
-      status: 'new',
+      stage: STAGE.NEW_LEAD,
       messages: [
         { id: crypto.randomUUID(), sender: 'customer', text: message.trim(), at: Date.now() },
       ],
-      followUpAt: null,
+      // The sequence starts when the quote goes out, not when the lead lands.
+      cadence: DEFAULT_CADENCE,
+      followUpAttempt: 0,
+      lastContactAt: null,
+      nextFollowUpAt: null,
+      sequencePaused: false,
       draftReply: '',
       createdAt: Date.now(),
     };

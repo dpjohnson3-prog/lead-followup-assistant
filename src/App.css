@@ -199,34 +199,167 @@
   color: var(--text);
 }
 
-.status-pill {
+/* Pipeline stage colours, defined once and shared by the header's stage
+   picker and the sidebar tag. Quoted and Follow Up are both blue-ish per the
+   owner's sheet, separated by weight rather than hue. */
+.stage-select__control--new_lead,
+.stage-tag--new_lead {
+  --stage-bg: var(--accent-bg);
+  --stage-fg: var(--accent);
+}
+
+.stage-select__control--quoted,
+.stage-tag--quoted {
+  --stage-bg: #dbeafe;
+  --stage-fg: #1d4ed8;
+}
+
+.stage-select__control--follow_up,
+.stage-tag--follow_up {
+  --stage-bg: #e0f2fe;
+  --stage-fg: #0369a1;
+}
+
+.stage-select__control--dormant,
+.stage-tag--dormant {
+  --stage-bg: #ffedd5;
+  --stage-fg: #9a5b00;
+}
+
+.stage-select__control--not_interested,
+.stage-tag--not_interested {
+  --stage-bg: #fee2e2;
+  --stage-fg: #b91c1c;
+}
+
+.stage-select__control--booked,
+.stage-tag--booked {
+  --stage-bg: #dcfce7;
+  --stage-fg: #15803d;
+}
+
+.stage-select {
   flex-shrink: 0;
-  padding: 4px 10px;
+}
+
+.stage-select__control {
+  padding: 6px 10px;
+  border: 1px solid transparent;
   border-radius: 999px;
-  background: var(--code-bg);
-  color: var(--text-h);
-  font-size: 12px;
-  white-space: nowrap;
+  background: var(--stage-bg, var(--code-bg));
+  color: var(--stage-fg, var(--text-h));
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
 }
 
-.status-pill--new {
+.stage-tag {
+  display: inline-block;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--stage-bg, var(--code-bg));
+  color: var(--stage-fg, var(--text-h));
+  font-size: 14px;
+}
+
+/* --- Follow-up sequence panel --- */
+.sequence {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+}
+
+.sequence--due {
   background: var(--accent-bg);
+}
+
+.sequence__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sequence__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.sequence__summary {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.sequence__actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 8px;
+}
+
+.sequence__cadence {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.sequence__edit-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 14px;
   color: var(--accent);
+  cursor: pointer;
 }
 
-.status-pill--customer_replied {
-  background: #fff4d6;
-  color: #8a5b00;
+.sequence__edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
 }
 
-.status-pill--follow_up {
-  background: #dbeafe;
-  color: #1d4ed8;
+.sequence__edit label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-h);
 }
 
-.status-pill--replied {
-  background: #dcfce7;
-  color: #15803d;
+.sequence__edit input {
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 14px;
+}
+
+.sequence__edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .lead-thread__messages {
@@ -285,41 +418,6 @@
   display: flex;
   gap: 8px;
   margin-bottom: 10px;
-}
-
-.lead-thread__follow-up {
-  position: relative;
-}
-
-.follow-up-menu {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  z-index: 10;
-  min-width: 120px;
-  margin: 0 0 4px;
-  padding: 4px;
-  list-style: none;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
-}
-
-.follow-up-menu button {
-  width: 100%;
-  padding: 6px 10px;
-  border: none;
-  border-radius: 4px;
-  background: none;
-  font: inherit;
-  color: var(--text-h);
-  text-align: left;
-  cursor: pointer;
-}
-
-.follow-up-menu button:hover {
-  background: var(--code-bg);
 }
 
 .lead-thread__draft-textarea {
@@ -638,7 +736,8 @@
   }
 
   .lead-thread__meta,
-  .status-pill,
+  .stage-tag,
+  .stage-select__control,
   .generate-error,
   .form-error {
     font-size: 14px;
@@ -665,21 +764,6 @@
   .lead-thread__draft-actions {
     flex-direction: column;
     gap: 10px;
-  }
-
-  .lead-thread__follow-up,
-  .lead-thread__follow-up .btn {
-    width: 100%;
-  }
-
-  /* The menu opens upward from a full-width trigger, so match its width. */
-  .follow-up-menu {
-    right: 0;
-    min-width: 0;
-  }
-
-  .follow-up-menu button {
-    min-height: 44px;
   }
 
   .lead-thread__draft-footer .btn {
@@ -743,5 +827,36 @@
   .profile-setup textarea,
   .modal textarea {
     min-height: 88px;
+  }
+
+  /* --- Stage picker and follow-up sequence --- */
+  .stage-select__control,
+  .sequence__edit input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+
+  .sequence {
+    padding: 12px 16px;
+  }
+
+  /* Summary above, controls below: the action labels are long enough that a
+     row would squeeze them at 390px. */
+  .sequence__row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .sequence__actions {
+    flex-direction: column;
+  }
+
+  .sequence__cadence {
+    flex-wrap: wrap;
+  }
+
+  .sequence__edit-link {
+    min-height: 44px;
   }
 }

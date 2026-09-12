@@ -1,4 +1,4 @@
-import { isFollowUpOverdue } from '../lib/leads';
+import { isFollowUpDue, stageLabel } from '../lib/leads';
 import { APP_NAME } from '../lib/branding';
 
 export default function Sidebar({
@@ -10,7 +10,7 @@ export default function Sidebar({
   onEditProfile,
   onResetDemo,
 }) {
-  const dueCount = leads.filter(isFollowUpOverdue).length;
+  const dueCount = leads.filter(isFollowUpDue).length;
 
   return (
     <aside className="sidebar">
@@ -33,7 +33,7 @@ export default function Sidebar({
       <ul className="sidebar__list">
         {leads.length === 0 && <li className="sidebar__empty">No leads yet</li>}
         {leads.map((lead) => {
-          const overdue = isFollowUpOverdue(lead);
+          const overdue = isFollowUpDue(lead);
           const lastMessage = lead.messages[lead.messages.length - 1];
           const classes = ['sidebar__lead'];
           if (lead.id === selectedLeadId) classes.push('sidebar__lead--active');
@@ -53,6 +53,10 @@ export default function Sidebar({
                   <span className="sidebar__lead-ticket">#{lead.ticketNumber}</span>
                 </div>
                 <p className="sidebar__lead-preview">{lastMessage?.text}</p>
+                <span className={`stage-tag stage-tag--${lead.stage}`}>
+                  {stageLabel(lead.stage)}
+                  {overdue ? ' · due' : ''}
+                </span>
               </button>
             </li>
           );

@@ -1,11 +1,20 @@
 import { useState } from 'react';
-import { statusLabel, FOLLOW_UP_OPTIONS } from '../lib/leads';
+import {
+  STAGE,
+  STAGES,
+  hasSequenceStarted,
+  logFollowUpSent,
+  pauseSequence,
+  resumeSequence,
+  setCadence,
+  startSequence,
+} from '../lib/leads';
+import FollowUpSequence from './FollowUpSequence';
 
 export default function LeadThread({ profile, lead, onUpdateLead, onBack }) {
   const [replyText, setReplyText] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [genError, setGenError] = useState('');
-  const [isFollowUpOpen, setFollowUpOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
   if (!lead) {
@@ -27,8 +36,23 @@ export default function LeadThread({ profile, lead, onUpdateLead, onBack }) {
     e.preventDefault();
     if (!replyText.trim()) return;
     addMessage('customer', replyText.trim());
-    onUpdateLead((prev) => ({ ...prev, status: 'customer_replied' }));
+    // They answered, so stop the chase until the owner decides what's next.
+    onUpdateLead(pauseSequence);
     setReplyText('');
+  }
+
+  function handleStageChange(e) {
+    const stage = e.target.value;
+    onUpdateLead((prev) => {
+      const next = { ...prev, stage };
+      // Moving a lead to Quoted is the trigger for the sequence to begin.
+      if (stage === STAGE.QUOTED && !hasSequenceStarted(prev)) return startSequence(next);
+      // Won or lost: nothing left to chase.
+      if (stage === STAGE.BOOKED || stage === STAGE.NOT_INTERESTED) {
+        return { ...next, nextFollowUpAt: null };
+      }
+      return next;
+    });
   }
 
   async function handleGenerateReply() {
@@ -90,16 +114,12 @@ export default function LeadThread({ profile, lead, onUpdateLead, onBack }) {
   function handleMarkSent() {
     if (!lead.draftReply?.trim()) return;
     addMessage('business', lead.draftReply.trim());
-    onUpdateLead((prev) => ({ ...prev, draftReply: '', status: 'replied' }));
-  }
-
-  function handleSetFollowUp(days) {
-    onUpdateLead((prev) => ({
-      ...prev,
-      status: 'follow_up',
-      followUpAt: Date.now() + days * 24 * 60 * 60 * 1000,
-    }));
-    setFollowUpOpen(false);
+    onUpdateLead((prev) => {
+      const cleared = { ...prev, draftReply: '' };
+      // The first reply out the door opens the sequence; every one after it is
+      // a step of the chase, so it advances the counter and reschedules.
+      return hasSequenceStarted(prev) ? logFollowUpSent(cleared) : startSequence(cleared);
+    });
   }
 
   return (
@@ -115,7 +135,20 @@ export default function LeadThread({ profile, lead, onUpdateLead, onBack }) {
             Ticket #{lead.ticketNumber} · {lead.source}
           </p>
         </div>
-        <span className={`status-pill status-pill--${lead.status}`}>{statusLabel(lead)}</span>
+        <label className="stage-select">
+          <span className="visually-hidden">Pipeline stage</span>
+          <select
+            className={`stage-select__control stage-select__control--${lead.stage}`}
+            value={lead.stage}
+            onChange={handleStageChange}
+          >
+            {STAGES.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </header>
 
       <div className="lead-thread__messages">
@@ -137,6 +170,14 @@ export default function LeadThread({ profile, lead, onUpdateLead, onBack }) {
         </button>
       </form>
 
+      <FollowUpSequence
+        lead={lead}
+        onStart={() => onUpdateLead(startSequence)}
+        onLogSent={() => onUpdateLead(logFollowUpSent)}
+        onResume={() => onUpdateLead(resumeSequence)}
+        onCadenceChange={(cadence) => onUpdateLead((prev) => setCadence(prev, cadence))}
+      />
+
       <div className="lead-thread__draft">
         <div className="lead-thread__draft-actions">
           <button
@@ -147,23 +188,6 @@ export default function LeadThread({ profile, lead, onUpdateLead, onBack }) {
           >
             {isGenerating ? 'Generating…' : 'Generate reply'}
           </button>
-
-          <div className="lead-thread__follow-up">
-            <button type="button" className="btn btn--ghost" onClick={() => setFollowUpOpen((v) => !v)}>
-              Follow up...
-            </button>
-            {isFollowUpOpen && (
-              <ul className="follow-up-menu">
-                {FOLLOW_UP_OPTIONS.map((opt) => (
-                  <li key={opt.days}>
-                    <button type="button" onClick={() => handleSetFollowUp(opt.days)}>
-                      in {opt.label}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
         </div>
 
         {genError && (
