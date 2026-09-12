@@ -8,6 +8,82 @@ const TONE_DESCRIPTIONS = {
 
 const MODEL = 'claude-sonnet-4-6';
 
+/** Cincinnati-local user base; see src/lib/money.js. */
+const CURRENCY = 'USD';
+
+function formatMoney(amount) {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: CURRENCY,
+    maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
+  }).format(amount);
+}
+
+/**
+ * How hard the follow-up should push, keyed to which attempt is going out.
+ * Escalation is about acknowledging the gap and lowering the cost of replying,
+ * never about pressure.
+ */
+function escalationGuidance(attempt, daysSinceContact) {
+  const gap =
+    typeof daysSinceContact === 'number' && daysSinceContact > 0
+      ? ` It has been about ${daysSinceContact} day${daysSinceContact === 1 ? '' : 's'} since the last contact.`
+      : '';
+
+  if (attempt <= 1) {
+    return `This is the FIRST follow-up.${gap} Keep it light and short - two or three sentences. Assume the message simply got buried; do not imply they are ignoring anyone. No pressure and no deadline.`;
+  }
+  if (attempt === 2) {
+    return `This is the SECOND follow-up.${gap} Stay warm and brief, but give one concrete reason to reply now - for example the current availability or how quickly the schedule is filling. Still no pressure.`;
+  }
+  return `This is follow-up number ${attempt} - the last stretch of the sequence.${gap} Acknowledge openly that it has been a while, keep it gracious, and give them an easy out: make clear that if the timing is wrong or they have gone another way, a one-line reply saying so is completely fine and you will stop following up. Do not guilt-trip and do not ask again after this.`;
+}
+
+/**
+ * Builds the system prompt. Exported so the escalation tiers and the pricing
+ * rule can be unit-tested without spending an API call.
+ */
+export function buildSystemPrompt(profile, sequence) {
+  const tone = TONE_DESCRIPTIONS[profile.tone] || 'friendly and professional';
+  const attempt = Number(sequence?.attempt) || 1;
+  const totalSteps = Number(sequence?.totalSteps) || null;
+  // Guard the empty cases explicitly: Number(null) is 0 and Number.isFinite(0)
+  // is true, so a coercion-first check turns "no quote on record" into a
+  // confident claim that a $0 quote was sent. A zero or negative amount is
+  // treated as no quote for the same reason.
+  const rawQuote = sequence?.quoteAmount;
+  const numericQuote =
+    rawQuote === null || rawQuote === undefined || rawQuote === ''
+      ? Number.NaN
+      : Number(rawQuote);
+  const quoteAmount = Number.isFinite(numericQuote) && numericQuote > 0 ? numericQuote : null;
+
+  // A follow-up is only a follow-up if a sequence is actually running; without
+  // one this is still the first reply to an inbound enquiry.
+  const isFollowUp = Boolean(sequence);
+
+  const pricingRule =
+    quoteAmount !== null
+      ? `A quote of ${formatMoney(quoteAmount)} has already been sent to this customer. You may refer to that exact figure if it helps. Never state any other number, and never revise, discount or re-estimate it.`
+      : `NO quote amount is on record for this lead. You must NOT mention any price, figure, estimate, range, deposit or discount - not even an approximate one. If pricing comes up, say the business will confirm the price once they have the details they need.`;
+
+  return `You are drafting a message on behalf of ${profile.businessName}, a business that provides: ${profile.trade}. They serve ${profile.serviceArea}.${
+    profile.availability ? ` Availability: ${profile.availability}.` : ''
+  }
+
+${
+  isFollowUp
+    ? `${escalationGuidance(attempt, sequence?.daysSinceContact)}${
+        totalSteps ? ` This is step ${attempt} of ${totalSteps} in the planned follow-up sequence.` : ''
+      }`
+    : 'This is the first reply to an inbound enquiry.'
+}
+
+PRICING: ${pricingRule}
+
+Write ONLY the message body - no preamble, no quotation marks, no subject line, no signature or sign-off. Use a ${tone} tone. Draw on the business's trade, service area, and availability where relevant. Ask for exactly what's needed to quote or schedule the job (for example: address, photos, preferred times) - nothing more than that. Do not repeat a question the customer has already answered in the conversation. Keep it concise, suitable for a text message or short email.`;
+}
+
 /**
  * Maps an error from the Anthropic SDK to an HTTP status plus a plain-English
  * message safe to show a non-technical user. `code` is machine-readable so the
@@ -145,7 +221,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed', code: 'method_not_allowed' });
   }
 
-  const { profile, thread } = req.body || {};
+  const { profile, thread, sequence } = req.body || {};
 
   if (!profile?.businessName || !Array.isArray(thread) || thread.length === 0) {
     return res.status(400).json({
@@ -164,13 +240,7 @@ export default async function handler(req, res) {
     });
   }
 
-  const tone = TONE_DESCRIPTIONS[profile.tone] || 'friendly and professional';
-
-  const systemPrompt = `You are drafting a reply on behalf of ${profile.businessName}, a business that provides: ${profile.trade}. They serve ${profile.serviceArea}.${
-    profile.availability ? ` Availability: ${profile.availability}.` : ''
-  }
-
-Write ONLY the message body - no preamble, no quotation marks, no signature or sign-off. Use a ${tone} tone. Draw on the business's trade, service area, and availability where it's relevant to the reply. Ask for exactly what's needed to quote or schedule the job (for example: address, photos, preferred times) - nothing more than that. Keep it concise, suitable for a text message or short email.`;
+  const systemPrompt = buildSystemPrompt(profile, sequence);
 
   const conversationText = thread
     .map((m) => `${m.sender === 'customer' ? 'Customer' : 'Business'}: ${m.text}`)

@@ -25,6 +25,24 @@ export const STAGES = [
 /** Won or lost: no further chasing, and excluded from the due count. */
 export const CLOSED_STAGES = [STAGE.BOOKED, STAGE.NOT_INTERESTED];
 
+/**
+ * Outcome is tracked separately from stage. Closing a lead fills it in when
+ * it is still blank, but the owner can set it to anything at any time and the
+ * stage never follows it back.
+ */
+export const OUTCOME = { WON: 'won', LOST: 'lost' };
+
+export const OUTCOMES = [
+  { value: '', label: '—' },
+  { value: OUTCOME.WON, label: 'Won' },
+  { value: OUTCOME.LOST, label: 'Lost' },
+];
+
+const STAGE_DEFAULT_OUTCOME = {
+  [STAGE.BOOKED]: OUTCOME.WON,
+  [STAGE.NOT_INTERESTED]: OUTCOME.LOST,
+};
+
 /** Days after each contact. Editable per lead. */
 export const DEFAULT_CADENCE = [2, 5, 12];
 
@@ -160,6 +178,46 @@ export function setCadence(lead, cadence, at = Date.now()) {
   return { ...next, nextFollowUpAt: (next.lastContactAt || at) + interval * DAY };
 }
 
+/**
+ * Applies a stage change, including the two side effects the stage implies:
+ * closing a lead ends the chase, and fills in the matching outcome only when
+ * none has been set. An outcome the owner chose is never overwritten.
+ */
+export function applyStageChange(lead, stage) {
+  const next = { ...lead, stage };
+
+  if (stage === STAGE.QUOTED && !hasSequenceStarted(lead)) {
+    return { ...startSequence(next), outcome: next.outcome ?? null };
+  }
+
+  if (CLOSED_STAGES.includes(stage)) {
+    return {
+      ...next,
+      nextFollowUpAt: null,
+      outcome: next.outcome || STAGE_DEFAULT_OUTCOME[stage],
+    };
+  }
+
+  return next;
+}
+
+/** The follow-up about to go out — one past the number already sent. */
+export function draftAttemptNumber(lead) {
+  return (lead.followUpAttempt || 0) + 1;
+}
+
+/** Context the reply endpoint needs to pitch a follow-up at the right level. */
+export function sequenceContext(lead) {
+  return {
+    attempt: draftAttemptNumber(lead),
+    totalSteps: cadenceOf(lead).length,
+    daysSinceContact: lead.lastContactAt
+      ? Math.max(0, Math.floor((Date.now() - lead.lastContactAt) / DAY))
+      : null,
+    quoteAmount: lead.quoteAmount ?? null,
+  };
+}
+
 export function isFollowUpDue(lead) {
   return (
     !isClosed(lead) &&
@@ -182,6 +240,22 @@ export function sequenceSummary(lead) {
   return `Follow-up ${sent + 1} of ${total} · ${due}`;
 }
 
+/** The daily queue: everything due now or overdue, oldest first. */
+export function dueLeads(leads) {
+  return leads
+    .filter(isFollowUpDue)
+    .sort((a, b) => a.nextFollowUpAt - b.nextFollowUpAt);
+}
+
+/** How overdue a follow-up is, for the queue cards. */
+export function overdueLabel(lead) {
+  if (!lead.nextFollowUpAt) return '';
+  const days = Math.floor((Date.now() - lead.nextFollowUpAt) / DAY);
+  if (days <= 0) return 'Due today';
+  if (days === 1) return '1 day overdue';
+  return `${days} days overdue`;
+}
+
 export function nextTicketNumber(leads) {
   const highest = leads.reduce(
     (max, lead) => Math.max(max, lead.ticketNumber || 0),
@@ -194,11 +268,19 @@ export function nextTicketNumber(leads) {
 /* Migration                                                           */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Stamped on every migrated lead so a future correction can tell which
+ * version of the migration wrote it. Unversioned leads were written either by
+ * the pre-pipeline app or by schema 1.
+ */
+export const SCHEMA_VERSION = 2;
+
 /** Pre-pipeline status values, kept only so stored leads can be upgraded. */
 const LEGACY_STAGE_MAP = {
   new: STAGE.NEW_LEAD,
-  // A sent reply in this trade is a quote going out.
-  replied: STAGE.QUOTED,
+  // A sent reply is often an acknowledgement or a question back, not a priced
+  // quote. Quoted implies a number went out, so it is only ever set by hand.
+  replied: STAGE.FOLLOW_UP,
   customer_replied: STAGE.FOLLOW_UP,
   follow_up: STAGE.FOLLOW_UP,
 };
@@ -222,7 +304,13 @@ export function migrateLead(lead) {
 
   const migrated = {
     ...lead,
+    schemaVersion: SCHEMA_VERSION,
     stage,
+    // Deal fields are optional throughout; null means "not recorded", which is
+    // meaningfully different from zero.
+    outcome: lead.outcome ?? null,
+    quoteAmount: lead.quoteAmount ?? null,
+    jobValue: lead.jobValue ?? null,
     cadence: Array.isArray(lead.cadence) && lead.cadence.length
       ? lead.cadence
       : DEFAULT_CADENCE,

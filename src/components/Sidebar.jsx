@@ -9,8 +9,9 @@ export default function Sidebar({
   onNewLead,
   onEditProfile,
   onResetDemo,
+  dueCount,
+  onShowDue,
 }) {
-  const dueCount = leads.filter(isFollowUpDue).length;
 
   return (
     <aside className="sidebar">
@@ -25,9 +26,9 @@ export default function Sidebar({
       </button>
 
       {dueCount > 0 && (
-        <div className="sidebar__banner">
+        <button type="button" className="sidebar__banner" onClick={onShowDue}>
           {dueCount} lead{dueCount === 1 ? '' : 's'} due for follow-up
-        </div>
+        </button>
       )}
 
       <ul className="sidebar__list">

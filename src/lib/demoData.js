@@ -1,4 +1,4 @@
-import { DEFAULT_CADENCE, STAGE } from './leads';
+import { DEFAULT_CADENCE, OUTCOME, STAGE } from './leads';
 
 const DAY = 24 * 60 * 60 * 1000;
 const HOUR = 60 * 60 * 1000;
@@ -35,6 +35,9 @@ export function createDemoLeads() {
     lastContactAt: null,
     nextFollowUpAt: null,
     sequencePaused: false,
+    outcome: null,
+    quoteAmount: null,
+    jobValue: null,
     draftReply: '',
     createdAt: now - 2 * HOUR,
     messages: [
@@ -58,6 +61,9 @@ export function createDemoLeads() {
     lastContactAt: now - 2 * DAY + 3 * HOUR,
     nextFollowUpAt: null,
     sequencePaused: true,
+    outcome: null,
+    quoteAmount: 340,
+    jobValue: null,
     draftReply: '',
     createdAt: now - 2 * DAY,
     messages: [
@@ -87,6 +93,9 @@ export function createDemoLeads() {
     lastContactAt: now - 7 * DAY,
     nextFollowUpAt: now - 2 * DAY,
     sequencePaused: false,
+    outcome: null,
+    quoteAmount: 615,
+    jobValue: null,
     draftReply: '',
     createdAt: now - 9 * DAY,
     messages: [
@@ -108,5 +117,32 @@ export function createDemoLeads() {
     ],
   };
 
-  return [john, maria, dave];
+  const priya = {
+    id: crypto.randomUUID(),
+    ticketNumber: 1000,
+    customerName: 'Priya',
+    source: 'Text',
+    stage: STAGE.BOOKED,
+    cadence: DEFAULT_CADENCE,
+    followUpAttempt: 1,
+    lastContactAt: now - 12 * DAY,
+    nextFollowUpAt: null,
+    sequencePaused: false,
+    outcome: OUTCOME.WON,
+    quoteAmount: 275,
+    jobValue: 275,
+    draftReply: '',
+    createdAt: now - 16 * DAY,
+    messages: [
+      message('customer', 'Can you clean the gutters on a single storey semi?', now - 16 * DAY),
+      message(
+        'business',
+        "Absolutely — gutter clearing is bread and butter for us. Send over the address and I'll get you a price.",
+        now - 16 * DAY + HOUR,
+      ),
+      message('customer', "Booked in for the 3rd, thanks!", now - 12 * DAY),
+    ],
+  };
+
+  return [john, maria, dave, priya];
 }

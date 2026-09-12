@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
-  STAGE,
   STAGES,
+  applyStageChange,
   hasSequenceStarted,
   logFollowUpSent,
   pauseSequence,
@@ -9,7 +9,9 @@ import {
   setCadence,
   startSequence,
 } from '../lib/leads';
+import { requestDraft } from '../lib/generateReply';
 import FollowUpSequence from './FollowUpSequence';
+import DealFields from './DealFields';
 
 export default function LeadThread({ profile, lead, onUpdateLead, onBack }) {
   const [replyText, setReplyText] = useState('');
@@ -43,56 +45,17 @@ export default function LeadThread({ profile, lead, onUpdateLead, onBack }) {
 
   function handleStageChange(e) {
     const stage = e.target.value;
-    onUpdateLead((prev) => {
-      const next = { ...prev, stage };
-      // Moving a lead to Quoted is the trigger for the sequence to begin.
-      if (stage === STAGE.QUOTED && !hasSequenceStarted(prev)) return startSequence(next);
-      // Won or lost: nothing left to chase.
-      if (stage === STAGE.BOOKED || stage === STAGE.NOT_INTERESTED) {
-        return { ...next, nextFollowUpAt: null };
-      }
-      return next;
-    });
+    onUpdateLead((prev) => applyStageChange(prev, stage));
   }
 
   async function handleGenerateReply() {
     setIsGenerating(true);
     setGenError('');
     try {
-      const res = await fetch('/api/generate-reply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ profile, thread: lead.messages }),
-      });
-
-      // A non-JSON body means something other than the API answered — most
-      // often the reply endpoint isn't running (plain `vite dev` serves no
-      // /api routes) or a proxy returned an HTML error page.
-      const data = await res.json().catch(() => null);
-
-      if (!res.ok) {
-        throw new Error(
-          data?.error ||
-            `The reply service returned an error (${res.status}). Make sure the /api route is running.`,
-        );
-      }
-
-      if (!data?.reply) {
-        throw new Error(
-          "The reply service didn't return a draft. Make sure the /api route is running.",
-        );
-      }
-
-      onUpdateLead((prev) => ({ ...prev, draftReply: data.reply }));
+      const reply = await requestDraft({ profile, lead });
+      onUpdateLead((prev) => ({ ...prev, draftReply: reply }));
     } catch (err) {
-      // A failed fetch (offline, server down) throws a TypeError with an
-      // unhelpful message, so give it a readable one.
-      const isNetworkFailure = err instanceof TypeError;
-      setGenError(
-        isNetworkFailure
-          ? "Couldn't reach the reply service. Check your connection and try again."
-          : err.message || 'Something went wrong. Try again.',
-      );
+      setGenError(err.message || 'Something went wrong. Try again.');
     } finally {
       // Always runs, so the button never stays stuck on "Generating…".
       setIsGenerating(false);
@@ -177,6 +140,8 @@ export default function LeadThread({ profile, lead, onUpdateLead, onBack }) {
         onResume={() => onUpdateLead(resumeSequence)}
         onCadenceChange={(cadence) => onUpdateLead((prev) => setCadence(prev, cadence))}
       />
+
+      <DealFields lead={lead} onChange={onUpdateLead} />
 
       <div className="lead-thread__draft">
         <div className="lead-thread__draft-actions">
