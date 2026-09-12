@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   STAGES,
   applyStageChange,
@@ -18,6 +18,18 @@ export default function LeadThread({ profile, lead, onUpdateLead, onBack }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [genError, setGenError] = useState('');
   const [copied, setCopied] = useState(false);
+
+  // Open on the newest message, and follow along as messages are added. Runs
+  // before the early return below so the hook order stays stable when no lead
+  // is selected.
+  const messagesRef = useRef(null);
+  const messageCount = lead?.messages?.length ?? 0;
+  useEffect(() => {
+    const el = messagesRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messageCount]);
+
+  const hasDraft = Boolean(lead?.draftReply?.trim());
 
   if (!lead) {
     return (
@@ -114,74 +126,83 @@ export default function LeadThread({ profile, lead, onUpdateLead, onBack }) {
         </label>
       </header>
 
-      <div className="lead-thread__messages">
-        {lead.messages.map((m) => (
-          <div key={m.id} className={`message message--${m.sender}`}>
-            <p>{m.text}</p>
+      {/* Everything between the header and the pinned action row scrolls as a
+          unit, so nothing can be clipped out of reach. The thread inside it
+          takes the slack and keeps its own scroll. */}
+      <div className="lead-thread__scroll">
+        <div className="lead-thread__messages" ref={messagesRef}>
+          {lead.messages.map((m) => (
+            <div key={m.id} className={`message message--${m.sender}`}>
+              <p>{m.text}</p>
+            </div>
+          ))}
+        </div>
+
+        <form className="lead-thread__log-reply" onSubmit={handleLogReply}>
+          <input
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            placeholder="Log what the customer said back..."
+          />
+          <button type="submit" className="btn btn--ghost">
+            Log reply
+          </button>
+        </form>
+
+        <FollowUpSequence
+          lead={lead}
+          onStart={() => onUpdateLead(startSequence)}
+          onLogSent={() => onUpdateLead(logFollowUpSent)}
+          onResume={() => onUpdateLead(resumeSequence)}
+          onCadenceChange={(cadence) => onUpdateLead((prev) => setCadence(prev, cadence))}
+        />
+
+        <DealFields lead={lead} onChange={onUpdateLead} />
+
+        <div className="lead-thread__draft">
+          <div className="lead-thread__draft-actions">
+            <button
+              type="button"
+              className="btn btn--primary"
+              onClick={handleGenerateReply}
+              disabled={isGenerating}
+            >
+              {isGenerating ? 'Generating…' : 'Generate reply'}
+            </button>
           </div>
-        ))}
+
+          {genError && (
+            <p className="generate-error" role="status">
+              {genError}
+            </p>
+          )}
+
+          {/* Small at rest so an empty box doesn't eat the thread's height;
+              grows once there is something to read. */}
+          <textarea
+            className="lead-thread__draft-textarea"
+            value={lead.draftReply || ''}
+            onChange={handleDraftChange}
+            rows={hasDraft ? 6 : 2}
+            placeholder="Drafted reply will appear here — edit before sending."
+          />
+        </div>
       </div>
 
-      <form className="lead-thread__log-reply" onSubmit={handleLogReply}>
-        <input
-          value={replyText}
-          onChange={(e) => setReplyText(e.target.value)}
-          placeholder="Log what the customer said back..."
-        />
-        <button type="submit" className="btn btn--ghost">
-          Log reply
+      {/* Outside the scroll region, so Copy and Mark as sent are on screen at
+          any window height. */}
+      <div className="lead-thread__draft-footer">
+        <button type="button" className="btn btn--ghost" onClick={handleCopy} disabled={!lead.draftReply}>
+          {copied ? 'Copied!' : 'Copy'}
         </button>
-      </form>
-
-      <FollowUpSequence
-        lead={lead}
-        onStart={() => onUpdateLead(startSequence)}
-        onLogSent={() => onUpdateLead(logFollowUpSent)}
-        onResume={() => onUpdateLead(resumeSequence)}
-        onCadenceChange={(cadence) => onUpdateLead((prev) => setCadence(prev, cadence))}
-      />
-
-      <DealFields lead={lead} onChange={onUpdateLead} />
-
-      <div className="lead-thread__draft">
-        <div className="lead-thread__draft-actions">
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={handleGenerateReply}
-            disabled={isGenerating}
-          >
-            {isGenerating ? 'Generating…' : 'Generate reply'}
-          </button>
-        </div>
-
-        {genError && (
-          <p className="generate-error" role="status">
-            {genError}
-          </p>
-        )}
-
-        <textarea
-          className="lead-thread__draft-textarea"
-          value={lead.draftReply || ''}
-          onChange={handleDraftChange}
-          rows={5}
-          placeholder="Drafted reply will appear here — edit before sending."
-        />
-
-        <div className="lead-thread__draft-footer">
-          <button type="button" className="btn btn--ghost" onClick={handleCopy} disabled={!lead.draftReply}>
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={handleMarkSent}
-            disabled={!lead.draftReply?.trim()}
-          >
-            Mark as sent
-          </button>
-        </div>
+        <button
+          type="button"
+          className="btn btn--primary"
+          onClick={handleMarkSent}
+          disabled={!lead.draftReply?.trim()}
+        >
+          Mark as sent
+        </button>
       </div>
     </section>
   );

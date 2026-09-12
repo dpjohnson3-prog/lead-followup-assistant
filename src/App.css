@@ -68,11 +68,16 @@
 }
 
 .sidebar__list {
-  flex: 1;
+  /* min-height:0 so this shrinks predictably inside the sidebar column, and a
+     little bottom padding so the final lead clears the footer's border rather
+     than sitting flush against it. */
+  flex: 1 1 auto;
+  min-height: 0;
   margin: 0;
-  padding: 0;
+  padding: 0 0 12px;
   list-style: none;
   overflow-y: auto;
+  scroll-padding-bottom: 12px;
   border-top: 1px solid var(--border);
 }
 
@@ -274,14 +279,36 @@
 
 /* --- Deal fields (outcome, quote, job value) --- */
 .deal {
-  padding: 12px 20px;
+  padding: 8px 20px;
   border-top: 1px solid var(--border);
 }
 
-.deal__label {
+/* Readable in both states: the summary stays put and the fields appear under
+   it, so the numbers can be scanned without expanding anything. */
+.deal__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 4px 0;
+  border: none;
+  background: none;
+  font: inherit;
   font-size: 14px;
   font-weight: 600;
   color: var(--text-h);
+  text-align: left;
+  cursor: pointer;
+}
+
+.deal__summary:hover .deal__summary-text {
+  text-decoration: underline;
+}
+
+.deal__chevron {
+  flex-shrink: 0;
+  color: var(--text);
 }
 
 .deal__fields {
@@ -539,8 +566,25 @@
   white-space: nowrap;
 }
 
+/* The scrolling middle of the panel. A flex column so the thread inside can
+   claim the slack when content is short, and a scroll container so nothing
+   below it can ever be clipped out of reach when content is tall. */
+.lead-thread__scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
 .lead-thread__messages {
-  flex: 1;
+  /* Basis equal to the floor: the thread grows into spare room, and when
+     space is tight it gives back down to 200px before the panel starts
+     scrolling. The floor matters because a scroll container's automatic
+     minimum size is 0 -- without it this collapses to whatever height
+     happens to be left over, which is how it became one clipped line. */
+  flex: 1 1 200px;
+  min-height: 200px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -600,6 +644,9 @@
 .lead-thread__draft-textarea {
   width: 100%;
   box-sizing: border-box;
+  /* rows drops to 2 until a draft exists; this keeps the resting box small
+     without preventing the user from dragging it larger. */
+  min-height: 44px;
   padding: 10px;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -610,10 +657,13 @@
 }
 
 .lead-thread__draft-footer {
+  flex: none;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 10px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  background: var(--bg);
 }
 
 /* Buttons */
@@ -931,6 +981,16 @@
     min-height: 100dvh;
   }
 
+  /* The desktop panel splits into a scroll region plus a pinned action row.
+     On mobile the document itself scrolls -- that is what keeps the composer
+     reachable with the keyboard open -- so the wrapper goes back to being
+     plain flow and the action row stays inline. */
+  .lead-thread__scroll {
+    display: block;
+    overflow: visible;
+    min-height: 0;
+  }
+
   .lead-thread__header {
     position: sticky;
     top: 0;
@@ -967,6 +1027,9 @@
   }
 
   .lead-thread__messages {
+    /* No floor here: the thread is as tall as its messages and the page
+       scrolls, so reserving 200px would only add dead space. */
+    min-height: 0;
     overflow-y: visible;
     padding: 16px;
   }
@@ -991,6 +1054,10 @@
 
   .lead-thread__draft-footer .btn {
     flex: 1;
+  }
+
+  .deal__summary {
+    min-height: 44px;
   }
 
   .lead-thread__draft-textarea {
